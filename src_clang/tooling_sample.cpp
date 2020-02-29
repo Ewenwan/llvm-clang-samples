@@ -8,6 +8,20 @@
 // Eli Bendersky (eliben@gmail.com)
 // This code is in the public domain
 //------------------------------------------------------------------------------
+/*
+将这个例子的代码作为蓝本进行改造，就可以很快地做出属于自己的source-to-source编译器。
+
+先说说代码的思路：
+
+1.ASTConsumer负责读取Clang解析出来的AST树 
+2.在ASTConsumer中重写HandleTopLevelDecl函数用以检测源码中的函数声明语句（见上面效果代码） 
+3. RecursiveASTVisitor类负责实际对源码的改写 
+4. 在RecursiveASTVisitor中重写VisitStmt函数与VisitFunctionDecl函数实现源码中目标语素的检测以及改写动作 
+5. 改写好的源码送入Rewriter类中，进行写入源代码文件的动作 
+
+*/
+
+
 #include <sstream>
 #include <string>
 
