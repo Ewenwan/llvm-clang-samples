@@ -1,3 +1,6 @@
+使用 Clang/LLVM工具编写的例子
+===================================
+
 **Note (Sep-18-2018)**: this repository is now unmaintained. Keeping
 out-of-source samples working with LLVM & Clang is tricky because of the
 continuously changing build requirements. I have been working on other stuff
