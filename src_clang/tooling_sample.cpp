@@ -19,6 +19,55 @@
 4. 在RecursiveASTVisitor中重写VisitStmt函数与VisitFunctionDecl函数实现源码中目标语素的检测以及改写动作 
 5. 改写好的源码送入Rewriter类中，进行写入源代码文件的动作 
 
+
+
+编译：
+clang++ $(llvm-config --cxxflags --ldflags --libs --system-libs) tooling_sample.cpp -lclangAST -lclangASTMatchers -lclangAnalysis -lclangBasic -lclangDriver -lclangEdit -lclangFrontend -lclangFrontendTool -lclangLex -lclangParse -lclangSema -lclangEdit -lclangRewrite -lclangRewriteFrontend -lclangStaticAnalyzerFrontend -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangCrossTU -lclangIndex -lclangSerialization -lclangToolingCore -lclangTooling -lclangFormat -o main 
+
+运行：
+先声明库目录：
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/ewenwan/wanyouwen/software/llvm/llvm_lib 
+
+运行：
+./c2c_main ../inputs/cfunc_with_if.c 
+
+
+输出：
+** Creating AST consumer for: /home/ewenwan/wanyouwen/software/llvm/project/llvm-clang-samples-master/src_clang/../inputs/cfunc_with_if.c
+FunctionDecl 0x1e62ee8 </home/ewenwan/wanyouwen/software/llvm/project/llvm-clang-samples-master/src_clang/../inputs/cfunc_with_if.c:1:1, line:5:1> line:1:6 foo 'void (int *, int *)'
+|-ParmVarDecl 0x1e62d90 <col:10, col:15> col:15 used a 'int *'
+|-ParmVarDecl 0x1e62e10 <col:18, col:23> col:23 used b 'int *'
+`-CompoundStmt 0x1e63198 <col:26, line:5:1>
+  `-IfStmt 0x1e63180 <line:2:3, line:4:3>
+    |-BinaryOperator 0x1e63090 <line:2:7, col:14> 'int' '>'
+    | |-ImplicitCastExpr 0x1e63078 <col:7, col:10> 'int' <LValueToRValue>
+    | | `-ArraySubscriptExpr 0x1e63038 <col:7, col:10> 'int' lvalue
+    | |   |-ImplicitCastExpr 0x1e63020 <col:7> 'int *' <LValueToRValue>
+    | |   | `-DeclRefExpr 0x1e62fe0 <col:7> 'int *' lvalue ParmVar 0x1e62d90 'a' 'int *'
+    | |   `-IntegerLiteral 0x1e63000 <col:9> 'int' 0
+    | `-IntegerLiteral 0x1e63058 <col:14> 'int' 1
+    `-CompoundStmt 0x1e63168 <col:17, line:4:3>
+      `-BinaryOperator 0x1e63148 <line:3:5, col:12> 'int' '='
+        |-ArraySubscriptExpr 0x1e63108 <col:5, col:8> 'int' lvalue
+        | |-ImplicitCastExpr 0x1e630f0 <col:5> 'int *' <LValueToRValue>
+        | | `-DeclRefExpr 0x1e630b0 <col:5> 'int *' lvalue ParmVar 0x1e62e10 'b' 'int *'
+        | `-IntegerLiteral 0x1e630d0 <col:7> 'int' 0
+        `-IntegerLiteral 0x1e63128 <col:12> 'int' 2
+FunctionDecl 0x1e63318 </home/ewenwan/wanyouwen/software/llvm/project/llvm-clang-samples-master/src_clang/../inputs/cfunc_with_if.c:7:1, col:26> col:6 bar 'void (float, float)'
+|-ParmVarDecl 0x1e631c8 <col:10, col:16> col:16 x 'float'
+`-ParmVarDecl 0x1e63248 <col:19, col:25> col:25 y 'float'
+** EndSourceFileAction for: /home/ewenwan/wanyouwen/software/llvm/project/llvm-clang-samples-master/src_clang/../inputs/cfunc_with_if.c
+// Begin function foo returning void
+void foo(int* a, int *b) {
+  if (a[0] > 1) // the 'if' part
+  {
+    b[0] = 2;
+  }
+}
+// End function foo
+
+void bar(float x, float y); // just a declaration 
+
 */
 
 
@@ -59,13 +108,13 @@ public:
       IfStmt *IfStatement = cast<IfStmt>(s);
       Stmt *Then = IfStatement->getThen();
 
-      TheRewriter.InsertText(Then->getLocStart(), "// the 'if' part\n", true,
+      TheRewriter.InsertText(Then->getBeginLoc(), "// the 'if' part\n", true,
                              true);
-                // 在if语句 后面添加注释
+                // 在if语句 后面添加注释   getLocStart() 旧接口 ---> getBeginLoc()
 
       Stmt *Else = IfStatement->getElse();
       if (Else)
-        TheRewriter.InsertText(Else->getLocStart(), "// the 'else' part\n",
+        TheRewriter.InsertText(Else->getBeginLoc(), "// the 'else' part\n",
                                true, true);
                 // 在else语句后面添加注释
     }
@@ -102,7 +151,7 @@ public:
       // And after 添加函数尾注释
       std::stringstream SSAfter;
       SSAfter << "\n// End function " << FuncName;
-      ST = FuncBody->getLocEnd().getLocWithOffset(1); // 函数体结束后的后面一个位置
+      ST = FuncBody->getEndLoc().getLocWithOffset(1); // 函数体结束后的后面一个位置   getLocEnd() 旧接口 ---> getEndLoc()
       //  插入注释
       TheRewriter.InsertText(ST, SSAfter.str(), true, true);
     }
@@ -162,7 +211,7 @@ public:
                                                  StringRef file) override {
     llvm::errs() << "** Creating AST consumer for: " << file << "\n";
     TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-    return llvm::make_unique<MyASTConsumer>(TheRewriter);
+    return std::make_unique<MyASTConsumer>(TheRewriter);
   }
 
 private:
