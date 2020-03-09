@@ -110,7 +110,7 @@ public:
 
       TheRewriter.InsertText(Then->getBeginLoc(), "// the 'if' part\n", true,
                              true);
-                // 在if语句 后面添加注释   getLocStart() 旧接口 ---> getBeginLoc()
+                  // 在if语句 后面添加注释   getLocStart() 旧接口 ---> getBeginLoc()  clang/AST/Stmt.h中
 
       Stmt *Else = IfStatement->getElse();
       if (Else)
@@ -138,10 +138,25 @@ public:
       DeclarationName DeclName = f->getNameInfo().getName(); // 函数名
       std::string FuncName = DeclName.getAsString();
 
+      // param 
+      int param_num =  f->getNumParams();    // clang/AST/Decl.h中
+      std::string func_param;
+      //for (FunctionDecl::param_iterator fit = f->param_begin(); fit != f->param_end(); fit++)
+      for (int i = 0; i < param_num; i ++)
+      {
+              ParmVarDecl *ptemp = f->getParamDecl(i);
+              func_param += " | ";
+
+              //func_param += fit->getOriginalType().getAsString();   
+              
+              func_param += ptemp->getOriginalType().getAsString(); 
+
+      }
+
       // Add comment before  生成函数头注释
       std::stringstream SSBefore;
-      SSBefore << "// Begin function " << FuncName << " returning " << TypeStr
-               << "\n";
+      SSBefore << "// Begin function " << FuncName << ", returning " << TypeStr << ", param num: " << param_num << ", type: " << func_param
+               << "\n"; 
       
       // 获取函数开头位置
       SourceLocation ST = f->getSourceRange().getBegin();
