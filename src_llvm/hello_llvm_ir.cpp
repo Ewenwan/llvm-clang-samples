@@ -1,3 +1,22 @@
+ /*
+参考：https://zhuanlan.zhihu.com/p/102270840
+1.获取待处理的C程序代码的LLVM IR字节码
+clang -emit-llvm -c test.c -o test.bc
+
+2.再编译项目代码
+clang++ $(llvm-config --cxxflags --ldflags --libs) main.cpp -o main
+
+3. 最后运行得到上文图示的结果
+./main test.bc
+
+打印 函数签名
+C语言中的函数签名由以下几部分组成：
+返回类型
+函数名
+参数个数及参数类型 
+
+*/
+
 // 引入相关LLVM头文件
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Function.h>
