@@ -8,8 +8,18 @@
 // Eli Bendersky (eliben@gmail.com)
 // This code is in the public domain
 //------------------------------------------------------------------------------
+// http://www.cppblog.com/kevinlynx/archive/2013/02/12/197810.aspx
+// https://eli.thegreenplace.net/2012/06/08/basic-source-to-source-transformation-with-clang/
 /*
 将这个例子的代码作为蓝本进行改造，就可以很快地做出属于自己的source-to-source编译器。
+
+编译器前端部分主要是输出代码对应的抽象语法树(AST)。
+Clang提供给上层的接口也主要是围绕语法树来做操作。
+通过google一些Clang的资料，你可能会如我当初一样对该如何正确地使用Clang心存疑惑。
+我最后使用的方式是基于RecursiveASTVisitor。
+这是一种类似回调的使用机制，通过提供特定语法树节点的接口，
+Clang在遍历语法树的时候，在遇到该节点时，就会调用到上层代码。
+不能说这是最好的方式，但起码它可以工作。
 
 先说说代码的思路：
 
